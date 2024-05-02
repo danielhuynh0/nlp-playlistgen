@@ -3,27 +3,43 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import KNeighborsClassifier
 from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
-from torch_geometric.loader import DataLoader
 import json
 
-# Define the neural network model
-class Net(nn.Module):
+class Encoder(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(Encoder, self).__init__()
         self.conv1 = GCNConv(12, 16)
         self.conv2 = GCNConv(16, 8)
-        self.fc1 = nn.Linear(8, 1)
+
+    def forward(self, x, edge_index):
+        x = F.relu(self.conv1(x, edge_index))
+        x = self.conv2(x, edge_index)
+        return x
+
+class Decoder(nn.Module):
+    def __init__(self):
+        super(Decoder, self).__init__()
+        self.conv1 = GCNConv(8, 16)
+        self.conv2 = GCNConv(16, 12)
+
+    def forward(self, x, edge_index):
+        x = F.relu(self.conv1(x, edge_index))
+        x = F.sigmoid(self.conv2(x, edge_index))
+        return x
+
+class Autoencoder(nn.Module):
+    def __init__(self):
+        super(Autoencoder, self).__init__()
+        self.encoder = Encoder()
+        self.decoder = Decoder()
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
-        x = F.relu(self.conv1(x, edge_index))
-        x = F.relu(self.conv2(x, edge_index))
-        x = torch.sigmoid(self.fc1(x))
+        x = self.encoder(x, edge_index)
+        x = self.decoder(x, edge_index)
         return x
 
 # Load data
@@ -51,20 +67,37 @@ def get_XY(data, weights=None):
 
     return X, Y
 
-# Train the GNN model
-def train_gnn(data, weights, epochs=100):
-    model = Net()
+from sklearn.neighbors import NearestNeighbors
 
-    X, Y = get_XY(data, weights)
+def get_edge_index(X, k=5):
+    # Fit nearest neighbors
+    nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(X)
+    distances, indices = nbrs.kneighbors(X)
+
+    # Create edge index
+    edge_index = []
+    for i in range(indices.shape[0]):
+        for j in range(1, indices.shape[1]):  # Ignore the first neighbor because it's the node itself
+            edge_index.append([i, indices[i, j]])
+
+    return torch.tensor(edge_index, dtype=torch.long).t().contiguous()
+
+# Use it in your training function
+def train_autoencoder(data, weights, epochs=100):
+    model = Autoencoder()
+
+    X, _ = get_XY(data, weights)
+    X = torch.tensor(X, dtype=torch.float)
+    edge_index = get_edge_index(X.numpy())  # Convert tensor to numpy array for get_edge_index
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    criterion = nn.BCELoss()
+    criterion = nn.MSELoss()
 
     for epoch in range(epochs):
         model.train()
         optimizer.zero_grad()
 
-        out = model(Data(x=torch.tensor(X, dtype=torch.float), edge_index=torch.tensor([[i, i] for i in range(X.shape[0])], dtype=torch.long).t().contiguous()))
-        loss = criterion(out, torch.tensor([[1.]] * X.shape[0], dtype=torch.float))
+        out = model(Data(x=X, edge_index=edge_index))
+        loss = criterion(out, X)  # Compare the output to the original input
         loss.backward()
         optimizer.step()
 
@@ -72,9 +105,7 @@ def train_gnn(data, weights, epochs=100):
             print(f'Epoch: {epoch}, Loss: {loss.item()}')
 
     # Save model
-    torch.save(model.state_dict(), 'gnn_model.pth')
-
-
+    torch.save(model.state_dict(), 'autoencoder_model.pth')
 
 # Convert JSON embedding to compatible format
 def convert_json_to_embedding(json_embedding):
@@ -104,16 +135,6 @@ json_embedding = '''
 }
 '''
 
-'''
-We ended up with the following results:
-Epoch: 0, Loss: 0.6387896537780762
-Epoch: 10, Loss: 0.35116046667099
-Epoch: 20, Loss: 0.1375829428434372
-Epoch: 30, Loss: 0.027752600610256195
-Epoch: 40, Loss: 0.005151386838406324
-Epoch: 50, Loss: 0.0015584159409627318
-Epoch: 60, Loss: 0.0007890438428148627
-Epoch: 70, Loss: 0.0005430469755083323
-Epoch: 80, Loss: 0.0004343124164734036
-Epoch: 90, Loss: 0.00037211639573797584
-'''
+data = get_data()
+embedding, weights = convert_json_to_embedding(json_embedding)
+train_autoencoder(data, weights)
