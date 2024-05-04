@@ -42,13 +42,11 @@ class Autoencoder(nn.Module):
         x = self.decoder(x, edge_index)
         return x
 
-# Load data
 def get_data():
     data_file = "data/data.csv"
     data = pd.read_csv(data_file)
     return data
 
-# Prepare data for training and testing
 def get_XY(data, weights=None):
     features = ['valence', 'key', 'tempo', 'acousticness', 'danceability', 
                 'energy', 'explicit', 'instrumentalness', 'liveness', 
@@ -56,11 +54,9 @@ def get_XY(data, weights=None):
     X = data[features]
     Y = data['id'] if 'id' in data.columns else None
 
-    # Scale the features
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
 
-    # Apply weights
     if weights is not None:
         for i, weight in enumerate(weights):
             X[:, i] *= weight
@@ -70,11 +66,9 @@ def get_XY(data, weights=None):
 from sklearn.neighbors import NearestNeighbors
 
 def get_edge_index(X, k=5):
-    # Fit nearest neighbors
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(X)
     distances, indices = nbrs.kneighbors(X)
 
-    # Create edge index
     edge_index = []
     for i in range(indices.shape[0]):
         for j in range(1, indices.shape[1]):  # Ignore the first neighbor because it's the node itself
@@ -82,13 +76,12 @@ def get_edge_index(X, k=5):
 
     return torch.tensor(edge_index, dtype=torch.long).t().contiguous()
 
-# Use it in your training function
 def train_autoencoder(data, weights, epochs=100):
     model = Autoencoder()
 
     X, _ = get_XY(data, weights)
     X = torch.tensor(X, dtype=torch.float)
-    edge_index = get_edge_index(X.numpy())  # Convert tensor to numpy array for get_edge_index
+    edge_index = get_edge_index(X.numpy())  
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     criterion = nn.MSELoss()
 
@@ -104,10 +97,8 @@ def train_autoencoder(data, weights, epochs=100):
         if epoch % 10 == 0:
             print(f'Epoch: {epoch}, Loss: {loss.item()}')
 
-    # Save model
     torch.save(model.state_dict(), 'autoencoder_model.pth')
 
-# Convert JSON embedding to compatible format
 def convert_json_to_embedding(json_embedding):
     embedding_data = json.loads(json_embedding)
     embedding = embedding_data["embedding"]
