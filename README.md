@@ -7,5 +7,7 @@
 ## How to run:
 - clone this git repository
 - cd into the repository in your command line
+- create a virtual environment using your Python 3.9 version (refer to the following for help: https://stackoverflow.com/questions/1534210/use-different-python-version-with-virtualenv)
+- activate your virtual environment
 - run ``` pip install -r requirements.txt ``` to install all required libraries for this program
-- while in the repo directory, run ```python -m nlp``` to run the program
+- while still in the repo directory, run ```python -m nlp``` to run the program
