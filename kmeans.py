@@ -34,6 +34,11 @@ def get_model(X, Y, n_neighbors=7):
 
 def get_predictions(model, data, X, n_neighbors):
     distances, indices = model.kneighbors(X, n_neighbors=n_neighbors)
+
+    sum_distances = np.sum(distances, axis=1)
+    avg_distances = sum_distances / n_neighbors
+    print("Average error: " + str(avg_distances))
+
     predictions = []
     for index in indices[0]:
         predictions.append([data.loc[index, 'artists'], data.loc[index, 'name'], data.loc[index, 'release_date']])
