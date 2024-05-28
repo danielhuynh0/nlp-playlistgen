@@ -48,9 +48,9 @@ def main():
     # print("Here is the song that most matched your description from the graph neural network (GNN): ")
     # gnn_result = gnn.predict_with_gnn(song_embedding, weights)
     # print(gnn_result)
-    print("Here is the song that most matched your description from the autoencoder: ")
-    autoencoder_result = autoencoder.predict_with_autoencoder(song_embedding, weights)
-    print(autoencoder_result)
+    # print("Here is the song that most matched your description from the autoencoder: ")
+    # autoencoder_result = autoencoder.predict_with_autoencoder(song_embedding, weights)
+    # print(autoencoder_result)
 
 if __name__ == '__main__':
     main()
