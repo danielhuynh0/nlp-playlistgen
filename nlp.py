@@ -27,6 +27,9 @@ def get_embedding_from_description(description):
 def run(description, number_of_songs):
     embedding = get_embedding_from_description(description)
     song_embedding = embedding['embedding']
+    for key in song_embedding:
+        if(song_embedding[key] == None):
+            song_embedding[key] = 0
     weights = embedding['weights']
     prediction = kmeans.predict(song_embedding, weights, number_of_songs)
     data_fixed_quotes = [[item.replace('"', "'") for item in sublist] for sublist in prediction]
